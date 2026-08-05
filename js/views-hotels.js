@@ -85,7 +85,8 @@ Views.openHotelOptionForm = function (trip, option = null) {
 
   const form = Utils.el('form', { class: 'form' });
   form.appendChild(Utils.el('h2', {}, isEdit ? 'Editar opción de hotel' : 'Nueva opción de hotel'));
-  form.appendChild(Field.text('Nombre', 'name', o.name, { placeholder: 'Ej: Hotel Panamericano', required: true }));
+  const nameField = Field.text('Nombre', 'name', o.name, { placeholder: 'Ej: Hotel Panamericano', required: true });
+  form.appendChild(nameField);
   form.appendChild(Utils.el('div', { class: 'form__row' }, [Field.date('Check-in', 'startDate', o.startDate), Field.date('Check-out', 'endDate', o.endDate)]));
 
   const priceMode = o.priceMode || 'per_night';
@@ -142,7 +143,12 @@ Views.openHotelOptionForm = function (trip, option = null) {
   form.appendChild(Field.text('Enlace (opcional)', 'link', o.link, { placeholder: 'https://…' }));
   form.appendChild(Field.textarea('Notas', 'notes', o.notes));
 
-  const locField = Field.location('Ubicación (opcional)', o.lat ? { lat: o.lat, lng: o.lng } : null);
+  const locField = Field.location('Ubicación (opcional)', o.lat ? { lat: o.lat, lng: o.lng } : null, {
+    onSelect: (item) => {
+      const nameInput = nameField.querySelector('input');
+      if (!nameInput.value.trim()) nameInput.value = item.shortLabel;
+    },
+  });
   form.appendChild(locField.node);
 
   form.appendChild(Utils.el('div', { class: 'form__actions' }, [

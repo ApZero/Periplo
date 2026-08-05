@@ -5,12 +5,14 @@ const Currency = {
 
   async fetchRates(base) {
     // Devuelve tasas: 1 unidad de `base` = X unidades de cada moneda
-    const url = `https://api.frankfurter.app/latest?from=${base}`;
+    // v2 de Frankfurter (api.frankfurter.dev) cubre 201 monedas, incluida PYG — la v1 (.app) no la soporta.
+    const url = `https://api.frankfurter.dev/v2/rates?base=${base}`;
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error('network');
-      const data = await res.json();
-      const rates = { ...data.rates, [base]: 1 };
+      const data = await res.json(); // [{date, base, quote, rate}, ...]
+      const rates = { [base]: 1 };
+      for (const row of data) rates[row.quote] = row.rate;
       await DB.put('meta', { key: `rates-${base}`, base, rates, updatedAt: new Date().toISOString() });
       return { rates, updatedAt: new Date().toISOString(), fresh: true };
     } catch (err) {

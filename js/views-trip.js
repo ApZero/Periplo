@@ -117,9 +117,17 @@ Views.renderSummaryTab = async function (main, trip) {
   main.appendChild(Utils.el('h3', { class: 'section-label' }, 'Monedas del viaje'));
   const curBox = Utils.el('div', { class: 'currency-box' });
   trip.currencies.forEach((c) => {
+    let rateText = 'moneda base';
+    if (c.code !== trip.baseCurrency) {
+      const rate = Number(c.rate) || 1;
+      // Si la tasa directa da un número muy chico para leer, mostramos la inversa.
+      rateText = rate >= 1
+        ? `1 ${trip.baseCurrency} = ${Utils.round2(rate)} ${c.code}`
+        : `1 ${c.code} = ${Utils.round2(1 / rate)} ${trip.baseCurrency}`;
+    }
     curBox.appendChild(Utils.el('div', { class: 'currency-row' }, [
       Utils.el('span', { class: 'currency-row__code' }, c.code),
-      Utils.el('span', { class: 'currency-row__rate' }, c.code === trip.baseCurrency ? 'moneda base' : `1 ${trip.baseCurrency} = ${Utils.round2(c.rate)} ${c.code}`),
+      Utils.el('span', { class: 'currency-row__rate' }, rateText),
     ]));
   });
   main.appendChild(curBox);
@@ -148,27 +156,67 @@ Views.renderSummaryTab = async function (main, trip) {
 Views.openCurrencyManager = function (trip) {
   const box = Utils.el('div', { class: 'form' });
   box.appendChild(Utils.el('h2', {}, 'Monedas del viaje'));
-  box.appendChild(Utils.el('p', { class: 'muted' }, `Moneda base: ${trip.baseCurrency}. Las tasas se actualizan desde internet una vez al día.`));
+  box.appendChild(Utils.el('p', { class: 'muted' }, `Moneda base: ${trip.baseCurrency}. Las tasas se actualizan desde internet una vez al día. Podés cargar la tasa desde cualquiera de los dos lados y darla vuelta con ⇄.`));
 
   const list = Utils.el('div', { class: 'currency-manage-list' });
+
+  function fmtRateNum(n) {
+    if (!isFinite(n) || n === null) return '';
+    const rounded = parseFloat(n.toFixed(6));
+    return String(rounded);
+  }
+
   const renderList = () => {
     list.innerHTML = '';
     trip.currencies.forEach((c) => {
-      const row = Utils.el('div', { class: 'currency-manage-row' }, [
-        Utils.el('span', {}, c.code),
-        c.code !== trip.baseCurrency ? Utils.el('input', {
-          type: 'number', step: '0.0001', value: c.rate,
-          onchange: (e) => { c.rate = Number(e.target.value) || 1; c.manual = true; },
-        }) : Utils.el('span', { class: 'muted' }, 'base'),
-        c.code !== trip.baseCurrency ? Utils.el('button', {
-          type: 'button', class: 'icon-btn icon-btn--sm', onclick: () => {
-            trip.currencies = trip.currencies.filter((x) => x.code !== c.code);
-            if (trip.displayCurrency === c.code) trip.displayCurrency = trip.baseCurrency;
-            renderList();
-          },
-        }, '✕') : null,
-      ]);
-      list.appendChild(row);
+      if (c.code === trip.baseCurrency) {
+        list.appendChild(Utils.el('div', { class: 'currency-manage-row' }, [
+          Utils.el('span', { class: 'currency-manage-row__code' }, c.code),
+          Utils.el('span', { class: 'muted' }, 'moneda base'),
+        ]));
+        return;
+      }
+
+      const dir = c.rateDirection || 'direct'; // 'direct': 1 base = X code · 'inverse': 1 code = X base
+      const rate = Number(c.rate) || 1;
+      const displayValue = dir === 'direct' ? rate : (rate ? 1 / rate : 0);
+      const fromCode = dir === 'direct' ? trip.baseCurrency : c.code;
+      const toCode = dir === 'direct' ? c.code : trip.baseCurrency;
+
+      const valueInput = Utils.el('input', {
+        type: 'number', step: 'any', value: fmtRateNum(displayValue),
+        oninput: (e) => {
+          const v = Number(e.target.value) || 0;
+          c.rate = dir === 'direct' ? (v || 1) : (v ? 1 / v : 1);
+          c.manual = true;
+        },
+      });
+
+      const flipBtn = Utils.el('button', {
+        type: 'button', class: 'icon-btn icon-btn--sm', title: 'Invertir dirección',
+        onclick: () => { c.rateDirection = dir === 'direct' ? 'inverse' : 'direct'; renderList(); },
+      }, '⇄');
+
+      const deleteBtn = Utils.el('button', {
+        type: 'button', class: 'icon-btn icon-btn--sm', onclick: () => {
+          trip.currencies = trip.currencies.filter((x) => x.code !== c.code);
+          if (trip.displayCurrency === c.code) trip.displayCurrency = trip.baseCurrency;
+          renderList();
+        },
+      }, '✕');
+
+      list.appendChild(Utils.el('div', { class: 'currency-manage-row currency-manage-row--rate' }, [
+        Utils.el('div', { class: 'currency-manage-row__top' }, [
+          Utils.el('span', { class: 'currency-manage-row__code' }, c.code),
+          deleteBtn,
+        ]),
+        Utils.el('div', { class: 'currency-manage-row__rate-line' }, [
+          Utils.el('span', { class: 'currency-manage-row__unit' }, `1 ${fromCode} =`),
+          valueInput,
+          Utils.el('span', { class: 'currency-manage-row__unit' }, toCode),
+          flipBtn,
+        ]),
+      ]));
     });
   };
   renderList();

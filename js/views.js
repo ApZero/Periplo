@@ -174,42 +174,84 @@ const Field = {
     ]);
   },
 
-  // Selector de ubicación opcional con mini-mapa. Devuelve { node, getValue, mount }.
-  // getValue() -> {lat, lng} | null. mount() debe llamarse DESPUÉS de insertar node en el documento.
-  location(label, initial) {
+  // Selector de ubicación opcional con búsqueda de lugares + mini-mapa.
+  // Devuelve { node, getValue, mount }. mount() debe llamarse DESPUÉS de insertar node en el documento.
+  location(label, initial, opts = {}) {
     let lat = initial && initial.lat ? initial.lat : null;
     let lng = initial && initial.lng ? initial.lng : null;
+    let placeLabel = null;
+
+    const searchInput = Utils.el('input', { type: 'text', placeholder: '🔍 Buscar hotel, restaurante, dirección…', autocomplete: 'off' });
+    const resultsBox = Utils.el('div', { class: 'location-results' });
+    const searchWrap = Utils.el('div', { class: 'location-search' }, [searchInput, resultsBox]);
 
     const mapBox = Utils.el('div', { class: 'location-map' });
-    const status = Utils.el('p', { class: 'location-status' }, lat ? `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'Sin ubicación — tocá el mapa para marcarla');
+    const status = Utils.el('p', { class: 'location-status' }, lat ? `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'Sin ubicación — buscá un lugar o tocá el mapa');
     const clearBtn = Utils.el('button', { type: 'button', class: 'btn btn--ghost btn--sm', style: lat ? '' : 'display:none' }, 'Quitar ubicación');
     const myLocBtn = Utils.el('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, '📍 Usar mi ubicación');
 
-    let mapInstance = null;
+    let picker = null;
+    let abortCtrl = null;
 
-    function setValue(newLat, newLng) {
-      lat = newLat; lng = newLng;
-      status.textContent = `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    function setValue(newLat, newLng, label2) {
+      lat = newLat; lng = newLng; placeLabel = label2 || null;
+      status.textContent = placeLabel ? `📍 ${placeLabel}` : `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       clearBtn.style.display = '';
     }
 
+    function hideResults() { resultsBox.innerHTML = ''; resultsBox.classList.remove('location-results--open'); }
+
+    function renderResults(items) {
+      resultsBox.innerHTML = '';
+      if (items.length === 0) { hideResults(); return; }
+      items.forEach((item) => {
+        const row = Utils.el('div', {
+          class: 'location-result',
+          onclick: () => {
+            setValue(item.lat, item.lng, item.shortLabel);
+            if (picker) picker.setMarker(item.lat, item.lng, 16);
+            searchInput.value = '';
+            hideResults();
+            if (opts.onSelect) opts.onSelect(item);
+          },
+        }, [
+          Utils.el('span', { class: 'location-result__title' }, item.shortLabel),
+          Utils.el('span', { class: 'location-result__sub' }, item.label),
+        ]);
+        resultsBox.appendChild(row);
+      });
+      resultsBox.classList.add('location-results--open');
+    }
+
+    const doSearch = Utils.debounce(async (query) => {
+      if (abortCtrl) abortCtrl.abort();
+      abortCtrl = new AbortController();
+      const bias = lat ? { lat, lng } : null;
+      const results = await MapHelper.searchPlaces(query, bias, abortCtrl.signal);
+      renderResults(results);
+    }, 450);
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim();
+      if (q.length < 3) { hideResults(); return; }
+      doSearch(q);
+    });
+    searchInput.addEventListener('blur', () => setTimeout(hideResults, 200));
+
     clearBtn.addEventListener('click', () => {
-      lat = null; lng = null;
-      status.textContent = 'Sin ubicación — tocá el mapa para marcarla';
+      lat = null; lng = null; placeLabel = null;
+      status.textContent = 'Sin ubicación — buscá un lugar o tocá el mapa';
       clearBtn.style.display = 'none';
-      if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+      if (picker) { picker.map.remove(); picker = null; }
       mapBox.innerHTML = '';
-      mapInstance = MapHelper.initPicker(mapBox, null, setValue);
+      picker = MapHelper.initPicker(mapBox, null, setValue);
     });
 
     myLocBtn.addEventListener('click', () => {
       MapHelper.useMyLocation(
         (gotLat, gotLng) => {
           setValue(gotLat, gotLng);
-          if (mapInstance) mapInstance.setView([gotLat, gotLng], 15);
-          if (mapInstance) {
-            L.marker([gotLat, gotLng], { draggable: true }).addTo(mapInstance);
-          }
+          if (picker) picker.setMarker(gotLat, gotLng, 15);
         },
         () => Utils.toast('No se pudo obtener tu ubicación', 'error')
       );
@@ -217,6 +259,7 @@ const Field = {
 
     const node = Utils.el('div', { class: 'field field--location' }, [
       Utils.el('span', {}, label),
+      searchWrap,
       mapBox,
       status,
       Utils.el('div', { class: 'location-actions' }, [myLocBtn, clearBtn]),
@@ -225,7 +268,7 @@ const Field = {
     return {
       node,
       getValue: () => (lat && lng ? { lat, lng } : null),
-      mount: () => { mapInstance = MapHelper.initPicker(mapBox, lat ? { lat, lng } : null, setValue); },
+      mount: () => { picker = MapHelper.initPicker(mapBox, lat ? { lat, lng } : null, setValue); },
     };
   },
 };

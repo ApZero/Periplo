@@ -59,9 +59,10 @@ Views.openActivityForm = function (trip, day, activity = null) {
   const form = Utils.el('form', { class: 'form' });
   form.appendChild(Utils.el('h2', {}, isEdit ? 'Editar actividad' : `Agregar a ${Utils.fmtDate(day.date)}`));
   form.appendChild(Field.select('Tipo', 'type', a.type, ACTIVITY_TYPES.map((t) => [t.id, `${t.icon} ${t.label}`])));
+  const titleField = Field.text('Título', 'title', a.title, { placeholder: 'Ej: Cerro Catedral', required: true });
   form.appendChild(Utils.el('div', { class: 'form__row' }, [
     Utils.el('label', { class: 'field', style: 'max-width:120px' }, [Utils.el('span', {}, 'Hora'), Utils.el('input', { type: 'time', name: 'time', value: a.time || '' })]),
-    Field.text('Título', 'title', a.title, { placeholder: 'Ej: Cerro Catedral', required: true }),
+    titleField,
   ]));
   form.appendChild(Utils.el('div', { class: 'form__row' }, [
     Field.number('Costo estimado (opcional)', 'cost', a.cost, { min: 0, step: 0.01 }),
@@ -70,7 +71,12 @@ Views.openActivityForm = function (trip, day, activity = null) {
   form.appendChild(Field.textarea('Notas', 'notes', a.notes));
   form.appendChild(Field.text('Enlace (opcional)', 'link', a.link, { placeholder: 'https://…' }));
 
-  const locField = Field.location('Ubicación (opcional)', a.lat ? { lat: a.lat, lng: a.lng } : null);
+  const locField = Field.location('Ubicación (opcional)', a.lat ? { lat: a.lat, lng: a.lng } : null, {
+    onSelect: (item) => {
+      const titleInput = titleField.querySelector('input');
+      if (!titleInput.value.trim()) titleInput.value = item.shortLabel;
+    },
+  });
   form.appendChild(locField.node);
 
   form.appendChild(Utils.el('div', { class: 'form__actions' }, [
