@@ -1,6 +1,6 @@
 // sw.js — Periplo service worker
 // IMPORTANTE: subir CACHE_VERSION en cada deploy para forzar la actualización del cache.
-const CACHE_VERSION = 'periplo-v2';
+const CACHE_VERSION = 'periplo-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -44,7 +44,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Tasas de cambio: siempre intentar red primero, caer a cache si falla
-  if (url.hostname === 'api.frankfurter.app') {
+  if (url.hostname === 'api.frankfurter.dev') {
     event.respondWith(
       fetch(event.request).then((res) => {
         const clone = res.clone();
