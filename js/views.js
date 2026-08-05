@@ -173,4 +173,59 @@ const Field = {
       Utils.el('span', {}, label),
     ]);
   },
+
+  // Selector de ubicación opcional con mini-mapa. Devuelve { node, getValue, mount }.
+  // getValue() -> {lat, lng} | null. mount() debe llamarse DESPUÉS de insertar node en el documento.
+  location(label, initial) {
+    let lat = initial && initial.lat ? initial.lat : null;
+    let lng = initial && initial.lng ? initial.lng : null;
+
+    const mapBox = Utils.el('div', { class: 'location-map' });
+    const status = Utils.el('p', { class: 'location-status' }, lat ? `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'Sin ubicación — tocá el mapa para marcarla');
+    const clearBtn = Utils.el('button', { type: 'button', class: 'btn btn--ghost btn--sm', style: lat ? '' : 'display:none' }, 'Quitar ubicación');
+    const myLocBtn = Utils.el('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, '📍 Usar mi ubicación');
+
+    let mapInstance = null;
+
+    function setValue(newLat, newLng) {
+      lat = newLat; lng = newLng;
+      status.textContent = `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      clearBtn.style.display = '';
+    }
+
+    clearBtn.addEventListener('click', () => {
+      lat = null; lng = null;
+      status.textContent = 'Sin ubicación — tocá el mapa para marcarla';
+      clearBtn.style.display = 'none';
+      if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+      mapBox.innerHTML = '';
+      mapInstance = MapHelper.initPicker(mapBox, null, setValue);
+    });
+
+    myLocBtn.addEventListener('click', () => {
+      MapHelper.useMyLocation(
+        (gotLat, gotLng) => {
+          setValue(gotLat, gotLng);
+          if (mapInstance) mapInstance.setView([gotLat, gotLng], 15);
+          if (mapInstance) {
+            L.marker([gotLat, gotLng], { draggable: true }).addTo(mapInstance);
+          }
+        },
+        () => Utils.toast('No se pudo obtener tu ubicación', 'error')
+      );
+    });
+
+    const node = Utils.el('div', { class: 'field field--location' }, [
+      Utils.el('span', {}, label),
+      mapBox,
+      status,
+      Utils.el('div', { class: 'location-actions' }, [myLocBtn, clearBtn]),
+    ]);
+
+    return {
+      node,
+      getValue: () => (lat && lng ? { lat, lng } : null),
+      mount: () => { mapInstance = MapHelper.initPicker(mapBox, lat ? { lat, lng } : null, setValue); },
+    };
+  },
 };

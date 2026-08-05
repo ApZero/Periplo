@@ -70,6 +70,9 @@ Views.openActivityForm = function (trip, day, activity = null) {
   form.appendChild(Field.textarea('Notas', 'notes', a.notes));
   form.appendChild(Field.text('Enlace (opcional)', 'link', a.link, { placeholder: 'https://…' }));
 
+  const locField = Field.location('Ubicación (opcional)', a.lat ? { lat: a.lat, lng: a.lng } : null);
+  form.appendChild(locField.node);
+
   form.appendChild(Utils.el('div', { class: 'form__actions' }, [
     isEdit ? Utils.el('button', { type: 'button', class: 'btn btn--danger btn--sm', onclick: async () => {
       const ok = await Utils.confirmDialog('¿Eliminar esta actividad?');
@@ -95,6 +98,9 @@ Views.openActivityForm = function (trip, day, activity = null) {
     a.currency = fd.get('currency');
     a.notes = fd.get('notes');
     a.link = fd.get('link');
+    const loc = locField.getValue();
+    a.lat = loc ? loc.lat : null;
+    a.lng = loc ? loc.lng : null;
     day.activities = day.activities || [];
     if (!isEdit) day.activities.push(a);
     else {
@@ -107,4 +113,5 @@ Views.openActivityForm = function (trip, day, activity = null) {
   });
 
   Modal.open(form, { wide: true });
+  locField.mount();
 };

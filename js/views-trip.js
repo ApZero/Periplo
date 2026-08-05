@@ -25,6 +25,7 @@ Views.renderTripDetail = async function () {
     ['gastos', '💵', 'Gastos'],
     ['hoteles', '🏨', 'Hoteles'],
     ['itinerario', '🗓️', 'Días'],
+    ['mapa', '🗺️', 'Mapa'],
   ];
   const nav = Utils.el('nav', { class: 'bottom-nav' }, tabs.map(([id, icon, label]) =>
     Utils.el('button', {
@@ -39,6 +40,7 @@ Views.renderTripDetail = async function () {
     gastos: Views.renderExpensesTab,
     hoteles: Views.renderHotelsTab,
     itinerario: Views.renderItineraryTab,
+    mapa: Views.renderMapTab,
   };
   (renderers[App.currentTab] || Views.renderSummaryTab)(main, trip);
 };

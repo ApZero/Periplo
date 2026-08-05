@@ -84,7 +84,7 @@ Views.openExpenseForm = function (trip, expense = null) {
   form.appendChild(overridesBox);
 
   function updateOverridesVisibility(costType) {
-    const fields = Utils.$all('.overrides-box .field');
+    const fields = Utils.$all('.field', overridesBox);
     const [daysF, nightsF, peopleF] = fields;
     daysF.style.display = (costType === 'per_day' || costType === 'per_day_person') ? '' : 'none';
     nightsF.style.display = (costType === 'per_night') ? '' : 'none';

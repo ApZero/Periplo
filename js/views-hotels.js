@@ -87,26 +87,63 @@ Views.openHotelOptionForm = function (trip, option = null) {
   form.appendChild(Utils.el('h2', {}, isEdit ? 'Editar opción de hotel' : 'Nueva opción de hotel'));
   form.appendChild(Field.text('Nombre', 'name', o.name, { placeholder: 'Ej: Hotel Panamericano', required: true }));
   form.appendChild(Utils.el('div', { class: 'form__row' }, [Field.date('Check-in', 'startDate', o.startDate), Field.date('Check-out', 'endDate', o.endDate)]));
-  form.appendChild(Utils.el('div', { class: 'form__row' }, [
+
+  const priceMode = o.priceMode || 'per_night';
+  const modeSelect = Field.select('¿Cómo querés cargar el precio?', 'priceMode', priceMode, [
+    ['per_night', 'Precio por noche'],
+    ['total', 'Precio total de la estadía'],
+  ]);
+  form.appendChild(modeSelect);
+
+  const priceRow = Utils.el('div', { class: 'form__row' }, [
     Field.number('Precio por noche', 'pricePerNight', o.pricePerNight, { min: 0, step: 0.01 }),
+    Field.number('Precio total', 'totalPrice', o.totalPrice, { min: 0, step: 0.01 }),
     Field.select('Moneda', 'currency', o.currency, trip.currencies.map((c) => [c.code, c.code])),
     Field.number('Habitaciones', 'rooms', o.rooms, { min: 1, step: 1 }),
-  ]));
+  ]);
+  form.appendChild(priceRow);
+
+  const perNightField = priceRow.children[0];
+  const totalField = priceRow.children[1];
+
   const preview = Utils.el('div', { class: 'calc-preview' });
   form.appendChild(preview);
+
+  function applyModeVisibility(mode) {
+    perNightField.style.display = mode === 'per_night' ? '' : 'none';
+    totalField.style.display = mode === 'total' ? '' : 'none';
+  }
+  applyModeVisibility(priceMode);
+
   function updatePreview() {
     const fd = new FormData(form);
-    const nights = Utils.nightsBetween(fd.get('startDate'), fd.get('endDate'));
-    const total = nights * (Number(fd.get('pricePerNight')) || 0) * (Number(fd.get('rooms')) || 1);
-    preview.textContent = `${nights} noches → total: ${Utils.fmtMoney(total, fd.get('currency'))}`;
+    const nights = Utils.nightsBetween(fd.get('startDate'), fd.get('endDate')) || 0;
+    const rooms = Number(fd.get('rooms')) || 1;
+    const mode = fd.get('priceMode');
+    const currency = fd.get('currency');
+    if (mode === 'total') {
+      const total = Number(fd.get('totalPrice')) || 0;
+      const perNight = nights > 0 ? total / (nights * rooms) : 0;
+      preview.textContent = `${nights} noches → ${Utils.fmtMoney(perNight, currency)} por noche (por habitación)`;
+    } else {
+      const perNight = Number(fd.get('pricePerNight')) || 0;
+      const total = perNight * nights * rooms;
+      preview.textContent = `${nights} noches → total: ${Utils.fmtMoney(total, currency)}`;
+    }
   }
-  form.addEventListener('input', updatePreview);
+  form.addEventListener('input', (ev) => {
+    if (ev.target.name === 'priceMode') applyModeVisibility(ev.target.value);
+    updatePreview();
+  });
   setTimeout(updatePreview, 0);
 
   form.appendChild(Field.text('Pros', 'pros', o.pros, { placeholder: 'Ej: cerca del centro, desayuno incluido' }));
   form.appendChild(Field.text('Contras', 'cons', o.cons, { placeholder: 'Ej: sin pileta, wifi lento' }));
   form.appendChild(Field.text('Enlace (opcional)', 'link', o.link, { placeholder: 'https://…' }));
   form.appendChild(Field.textarea('Notas', 'notes', o.notes));
+
+  const locField = Field.location('Ubicación (opcional)', o.lat ? { lat: o.lat, lng: o.lng } : null);
+  form.appendChild(locField.node);
 
   form.appendChild(Utils.el('div', { class: 'form__actions' }, [
     isEdit ? Utils.el('button', { type: 'button', class: 'btn btn--danger btn--sm', onclick: async () => {
@@ -128,19 +165,31 @@ Views.openHotelOptionForm = function (trip, option = null) {
     o.name = fd.get('name').trim() || 'Opción sin nombre';
     o.startDate = fd.get('startDate');
     o.endDate = fd.get('endDate');
-    o.pricePerNight = Number(fd.get('pricePerNight')) || 0;
     o.currency = fd.get('currency');
     o.rooms = Number(fd.get('rooms')) || 1;
+    o.priceMode = fd.get('priceMode');
+    const nights = Utils.nightsBetween(o.startDate, o.endDate) || 0;
+    if (o.priceMode === 'total') {
+      o.totalPrice = Number(fd.get('totalPrice')) || 0;
+      o.pricePerNight = nights > 0 ? Utils.round2(o.totalPrice / (nights * o.rooms)) : 0;
+    } else {
+      o.pricePerNight = Number(fd.get('pricePerNight')) || 0;
+      o.totalPrice = Utils.round2(o.pricePerNight * nights * o.rooms);
+    }
     o.pros = fd.get('pros');
     o.cons = fd.get('cons');
     o.link = fd.get('link');
     o.notes = fd.get('notes');
+    const loc = locField.getValue();
+    o.lat = loc ? loc.lat : null;
+    o.lng = loc ? loc.lng : null;
     await DB.put('hotelOptions', o);
     Modal.close();
     Views.renderTripDetail();
   });
 
   Modal.open(form, { wide: true });
+  locField.mount();
 };
 
 Views.openComboForm = function (trip, options, combo = null) {
