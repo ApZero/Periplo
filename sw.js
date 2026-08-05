@@ -1,6 +1,6 @@
 // sw.js — Periplo service worker
 // IMPORTANTE: subir CACHE_VERSION en cada deploy para forzar la actualización del cache.
-const CACHE_VERSION = 'periplo-v1';
+const CACHE_VERSION = 'periplo-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const APP_SHELL = [
   './js/utils.js',
   './js/db.js',
   './js/currency.js',
+  './js/map.js',
   './js/expenses.js',
   './js/hotels.js',
   './js/itinerary.js',
@@ -18,6 +19,7 @@ const APP_SHELL = [
   './js/views-expenses.js',
   './js/views-hotels.js',
   './js/views-itinerary.js',
+  './js/views-map.js',
   './js/views-settings.js',
   './js/app.js',
   './icons/icon-192.png',
@@ -53,8 +55,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Fuentes de Google Fonts: cache-first
-  if (url.hostname.includes('fonts.g')) {
+  // Fuentes de Google Fonts y librería de mapas (Leaflet vía cdnjs): cache-first
+  if (url.hostname.includes('fonts.g') || url.hostname === 'cdnjs.cloudflare.com') {
     event.respondWith(
       caches.match(event.request).then((cached) => cached || fetch(event.request).then((res) => {
         const clone = res.clone();
