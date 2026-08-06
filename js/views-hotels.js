@@ -47,12 +47,25 @@ Views.renderHotelsTab = async function (main, trip) {
   } else if (combos.length === 0) {
     main.appendChild(Utils.el('p', { class: 'muted' }, 'Una combinación asigna un hotel distinto a cada tramo de fechas del viaje — útil si te movés entre ciudades o querés comparar paquetes completos.'));
   } else {
+    if (trip.mainComboId && combos.find((c) => c.id === trip.mainComboId)) {
+      main.appendChild(Utils.el('div', { class: 'main-combo-mode' }, [
+        Utils.el('span', {}, '⭐ La principal '),
+        Utils.el('select', {
+          onchange: async (ev) => { trip.mainComboMode = ev.target.value; await App.saveTrip(trip); Views.renderTripDetail(); },
+        }, [
+          Utils.el('option', { value: 'override', selected: trip.mainComboMode !== 'add' ? 'selected' : null }, 'reemplaza los gastos de Alojamiento'),
+          Utils.el('option', { value: 'add', selected: trip.mainComboMode === 'add' ? 'selected' : null }, 'se suma a los gastos de Alojamiento'),
+        ]),
+        Utils.el('span', {}, ' en el presupuesto.'),
+      ]));
+    }
     for (const combo of combos) {
       const { total, breakdown } = await Hotels.comboTotal(combo, trip, display, options);
       const coverage = Hotels.validateComboCoverage(combo, trip);
-      const card = Utils.el('div', { class: 'combo-card' }, [
+      const isMain = trip.mainComboId === combo.id;
+      const card = Utils.el('div', { class: `combo-card ${isMain ? 'combo-card--main' : ''}` }, [
         Utils.el('div', { class: 'combo-card__top' }, [
-          Utils.el('h4', {}, combo.name || 'Combinación'),
+          Utils.el('h4', {}, [isMain ? '⭐ ' : '', combo.name || 'Combinación']),
           Utils.el('span', { class: 'combo-card__total' }, Utils.fmtMoney(total, display)),
         ]),
         ...breakdown.map((b) => Utils.el('div', { class: 'combo-card__segment' }, [
@@ -61,12 +74,23 @@ Views.renderHotelsTab = async function (main, trip) {
         ])),
         !coverage.complete ? Utils.el('p', { class: 'combo-card__warning' },
           coverage.gaps.length ? `⚠️ Faltan ${coverage.gaps.length} noche(s) sin cubrir` : `⚠️ Hay noches solapadas entre tramos`) : null,
+        isMain ? Utils.el('p', { class: 'combo-card__main-note' }, '⭐ Esta es la combinación principal — su total se aplica al presupuesto del viaje.') : null,
         Utils.el('div', { class: 'combo-card__actions' }, [
+          Utils.el('button', {
+            class: `btn btn--sm ${isMain ? 'btn--ghost' : 'btn--primary'}`,
+            onclick: async () => {
+              trip.mainComboId = isMain ? null : combo.id;
+              if (!isMain && !trip.mainComboMode) trip.mainComboMode = 'override';
+              await App.saveTrip(trip);
+              Views.renderTripDetail();
+            },
+          }, isMain ? '☆ Quitar como principal' : '⭐ Marcar como principal'),
           Utils.el('button', { class: 'btn btn--ghost btn--sm', onclick: () => Views.openComboForm(trip, options, combo) }, 'Editar'),
           Utils.el('button', { class: 'btn btn--ghost btn--sm', onclick: async () => {
             const ok = await Utils.confirmDialog('¿Eliminar esta combinación?');
             if (!ok) return;
             await DB.delete('hotelCombos', combo.id);
+            if (trip.mainComboId === combo.id) { trip.mainComboId = null; await App.saveTrip(trip); }
             Views.renderTripDetail();
           } }, 'Eliminar'),
         ]),

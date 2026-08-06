@@ -153,4 +153,5 @@ const COST_TYPES = [
   { id: 'per_day_person', label: 'Por día y por persona', hint: 'Se multiplica por días × personas.' },
   { id: 'per_person', label: 'Por persona', hint: 'Se multiplica por la cantidad de personas.' },
   { id: 'per_night', label: 'Por noche', hint: 'Se multiplica por la cantidad de noches (para alojamiento).' },
+  { id: 'per_km', label: 'Por distancia (precio/km)', hint: 'Cargá el precio por km y sumá los recorridos — el total se calcula solo.' },
 ];

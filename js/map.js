@@ -71,8 +71,9 @@ const MapHelper = {
 
   // Búsqueda de lugares vía Nominatim (OpenStreetMap, gratis, sin API key).
   // bias: {lat, lng} opcional para priorizar resultados cercanos.
+  // Devuelve { results, error }. error es null si salió bien (aunque no haya resultados).
   async searchPlaces(query, bias, signal) {
-    if (!query || query.trim().length < 3) return [];
+    if (!query || query.trim().length < 3) return { results: [], error: null };
     const params = new URLSearchParams({
       format: 'jsonv2',
       q: query,
@@ -87,9 +88,9 @@ const MapHelper = {
     const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
     try {
       const res = await fetch(url, { signal, headers: { Accept: 'application/json' } });
-      if (!res.ok) return [];
+      if (!res.ok) return { results: [], error: `http_${res.status}` };
       const data = await res.json();
-      return data.map((r) => ({
+      const results = data.map((r) => ({
         label: r.display_name,
         shortLabel: (r.name && r.name.length) ? r.name : r.display_name.split(',')[0],
         lat: parseFloat(r.lat),
@@ -97,9 +98,10 @@ const MapHelper = {
         type: r.type,
         category: r.category,
       }));
+      return { results, error: null };
     } catch (err) {
-      if (err.name === 'AbortError') return [];
-      return [];
+      if (err.name === 'AbortError') return { results: [], error: null };
+      return { results: [], error: 'network' };
     }
   },
 

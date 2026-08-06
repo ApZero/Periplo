@@ -19,9 +19,19 @@ const Expenses = {
         return amount * people;
       case 'per_night':
         return amount * nights;
+      case 'per_km':
+        return amount * Expenses.totalKm(expense);
       default:
         return amount;
     }
+  },
+
+  // Suma los km de los recorridos cargados, o el valor manual si no hay recorridos.
+  totalKm(expense) {
+    if (expense.routes && expense.routes.length) {
+      return expense.routes.reduce((sum, r) => sum + (Number(r.km) || 0), 0);
+    }
+    return Number(expense.overrideKm) || 0;
   },
 
   computeTotalInCurrency(expense, trip, targetCurrency) {
@@ -44,6 +54,24 @@ const Expenses = {
       byCat[e.category] = (byCat[e.category] || 0) + t;
       total += t;
     }
+
+    // Si hay una combinación de hotel marcada como principal, su total reemplaza
+    // o se suma a los gastos manuales de categoría "hotel", según trip.mainComboMode.
+    if (trip.mainComboId) {
+      const combo = await DB.get('hotelCombos', trip.mainComboId);
+      if (combo) {
+        const { total: comboTotal } = await Hotels.comboTotal(combo, trip, displayCurrency);
+        const previousHotelTotal = byCat.hotel || 0;
+        if (trip.mainComboMode === 'add') {
+          byCat.hotel = previousHotelTotal + comboTotal;
+          total += comboTotal;
+        } else {
+          byCat.hotel = comboTotal;
+          total = total - previousHotelTotal + comboTotal;
+        }
+      }
+    }
+
     return { byCat, total, count: items.length };
   },
 

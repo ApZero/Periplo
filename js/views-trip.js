@@ -95,6 +95,11 @@ Views.renderSummaryTab = async function (main, trip) {
   ]));
 
   main.appendChild(Utils.el('h3', { class: 'section-label' }, 'Por categoría'));
+  if (trip.mainComboId) {
+    const modeText = trip.mainComboMode === 'add' ? 'se suma a' : 'reemplaza';
+    main.appendChild(Utils.el('p', { class: 'muted muted--sm', style: 'margin-bottom:8px' },
+      `⭐ El total de Alojamiento incluye la combinación de hotel marcada como principal (${modeText} los gastos manuales de esa categoría).`));
+  }
   const catList = Utils.el('div', { class: 'category-breakdown' });
   const maxVal = Math.max(1, ...Object.values(byCat));
   CATEGORIES.forEach((cat) => {

@@ -201,9 +201,15 @@ const Field = {
 
     function hideResults() { resultsBox.innerHTML = ''; resultsBox.classList.remove('location-results--open'); }
 
+    function renderMessage(text) {
+      resultsBox.innerHTML = '';
+      resultsBox.appendChild(Utils.el('div', { class: 'location-result location-result--message' }, text));
+      resultsBox.classList.add('location-results--open');
+    }
+
     function renderResults(items) {
       resultsBox.innerHTML = '';
-      if (items.length === 0) { hideResults(); return; }
+      if (items.length === 0) { renderMessage('Sin resultados'); return; }
       items.forEach((item) => {
         const row = Utils.el('div', {
           class: 'location-result',
@@ -223,20 +229,38 @@ const Field = {
       resultsBox.classList.add('location-results--open');
     }
 
-    const doSearch = Utils.debounce(async (query) => {
+    let searchToken = 0;
+    async function runSearch(query) {
+      const token = ++searchToken;
       if (abortCtrl) abortCtrl.abort();
       abortCtrl = new AbortController();
+      renderMessage('Buscando…');
       const bias = lat ? { lat, lng } : null;
-      const results = await MapHelper.searchPlaces(query, bias, abortCtrl.signal);
+      const { results, error } = await MapHelper.searchPlaces(query, bias, abortCtrl.signal);
+      if (token !== searchToken) return; // una búsqueda más nueva ya está en curso
+      if (error) { renderMessage('No se pudo buscar — revisá tu conexión'); return; }
       renderResults(results);
-    }, 450);
+    }
+
+    const debouncedSearch = Utils.debounce(runSearch, 450);
 
     searchInput.addEventListener('input', () => {
       const q = searchInput.value.trim();
       if (q.length < 3) { hideResults(); return; }
-      doSearch(q);
+      debouncedSearch(q);
     });
-    searchInput.addEventListener('blur', () => setTimeout(hideResults, 200));
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        // Evita que Enter dispare el submit del formulario — acá Enter busca, no guarda.
+        e.preventDefault();
+        e.stopPropagation();
+        const q = searchInput.value.trim();
+        if (q.length >= 3) runSearch(q);
+      } else if (e.key === 'Escape') {
+        hideResults();
+      }
+    });
+    searchInput.addEventListener('blur', () => setTimeout(hideResults, 250));
 
     clearBtn.addEventListener('click', () => {
       lat = null; lng = null; placeLabel = null;
