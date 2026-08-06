@@ -273,6 +273,18 @@ button, input, select, textarea {
 
 .overrides-box { flex-wrap: wrap; }
 
+.routes-wrap { display: flex; flex-direction: column; gap: 8px; }
+.field-hint--label { margin-top: 0; font-size: 13px; color: var(--ink-soft); }
+.routes-list { display: flex; flex-direction: column; gap: 6px; }
+.route-row { display: flex; gap: 6px; align-items: center; }
+.route-row input[type="text"] { flex: 1.6; }
+.route-row input[type="number"] { flex: 0.8; }
+.route-row input {
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 8px; font-size: 13px;
+}
+.routes-total { font-size: 12px; color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; }
+
 /* ---------- Toast ---------- */
 
 .toast-container {
@@ -398,12 +410,22 @@ button, input, select, textarea {
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 14px; margin-bottom: 10px;
 }
+.combo-card--main { border-color: var(--ochre); border-width: 1.5px; background: #FFFBF2; }
+.combo-card__main-note { font-size: 12px; color: var(--ochre); margin-top: 6px; }
+.main-combo-mode {
+  font-size: 13px; color: var(--ink-soft); margin-bottom: 10px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+}
+.main-combo-mode select {
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 4px 8px; font-size: 13px; color: var(--ink);
+}
 .combo-card__top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
 .combo-card__top h4 { font-size: 16px; }
 .combo-card__total { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--terracotta-dark); }
 .combo-card__segment { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-soft); padding: 3px 0; }
 .combo-card__warning { color: var(--danger); font-size: 12px; margin-top: 6px; }
-.combo-card__actions { display: flex; gap: 8px; margin-top: 10px; }
+.combo-card__actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
 .segments-box { display: flex; flex-direction: column; gap: 8px; }
 .segment-row { display: flex; gap: 6px; align-items: center; }
@@ -500,6 +522,10 @@ button, input, select, textarea {
 }
 .location-result:last-child { border-bottom: none; }
 .location-result:active { background: var(--cream); }
+.location-result--message {
+  color: var(--ink-soft); font-size: 13px; cursor: default; text-align: center;
+}
+.location-result--message:active { background: transparent; }
 .location-result__title { font-size: 13px; font-weight: 600; }
 .location-result__sub {
   font-size: 11px; color: var(--ink-soft);
