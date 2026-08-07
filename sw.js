@@ -1,6 +1,6 @@
 // sw.js — Periplo service worker
 // IMPORTANTE: subir CACHE_VERSION en cada deploy para forzar la actualización del cache.
-const CACHE_VERSION = 'periplo-v5';
+const CACHE_VERSION = 'periplo-v6';
 const APP_SHELL = [
   './',
   './index.html',
